@@ -19,6 +19,9 @@ import (
 
 func main() {
 	var kubeconfig *string
+// home是家目录，如果能取得家目录的值，就可以用来做默认值
+		// 如果输入了kubeconfig参数，该参数的值就是kubeconfig文件的绝对路径，
+		// 如果没有输入kubeconfig参数，就用默认路径~/.kube/config
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
@@ -32,17 +35,20 @@ func main() {
         deployname := "ku"
         image := "nginx:1.17"
 
+	// 从本机加载kubeconfig配置文件，因此第一个参数为空字符串
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+        // kubeconfig加载失败就直接退出了
 	if err != nil {
 		panic(err)
 	}
+        // dynamic.NewForConfig实例化clientset对象
 	client, err := dynamic.NewForConfig(config)
 	if err != nil {
 		panic(err)
 	}
-
+        //使用schema的包带入gvr
 	deploymentRes := schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
-
+        //定义结构化数据结构
 	deployment := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "apps/v1",
