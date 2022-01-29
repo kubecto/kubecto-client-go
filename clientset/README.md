@@ -1,11 +1,7 @@
-`client-go`支持`4`种`Client`客户端对象与`Kubernetes API Server`交互的方式，`Client`交互对象如图
+`client-go`支持`4`种`Client`客户端对象与`Kubernetes API Server`交互的方式
 
-![4141638690060_.pic.jpg](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/3823d496-1926-4fc0-bfdb-d9d9779a8096/4141638690060_.pic.jpg)
 
-￼ 
-                                                                                                                                                                             `Client`交互对象
-
-[https://github.com/kubecto/kubecto-client-go](https://github.com/kubecto/kubecto-client-go)
+                                                                                                                                                                
 
 `RESTClient`是一种最基础的客户端，使用时需要指定`Resource`和`Version`等信息，编写代码时需要提前知道`Resource`所在的`Group`和对应的`Version`信息。相比`RESTClient，ClientSet`使用起来更加便捷，一般情况下，开发者对`Kubernetes`进行二次开发时通常使用`ClientSet`。
 
@@ -13,9 +9,6 @@
 
 注意：`ClientSet`仅能访问`Kubernetes`自身内置的资源（即客户端集合内的资源），不能直接访问`CRD`自定义资源。如果需要`ClientSet`访问`CRD`自定义资源，可以通过`client-gen`代码生成器重新生成`ClientSet`，在`ClientSet`集合中自动生成与`CRD`操作相关的接口。
 
-![4581639375543_.pic.jpg](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/f12786ee-d594-4009-9d3f-f293849e09c2/4581639375543_.pic.jpg)
-
-                                                                                                                                                                      多`ClientSet`多资源集合
 类似于`kubectl`命令，通过`ClientSet` 创建一个新的命名空间`cto`以及一个新的`deployment`，`ClientSet Example`代码示例如下：
 
 ```go
