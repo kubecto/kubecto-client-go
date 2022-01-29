@@ -1,143 +1,202 @@
-`DynamicClient`是一种动态客户端，它可以对任意`Kubernetes`资源进行`RESTful`操作，包括`CRD`自定义资源。`DynamicClient`与`ClientSet`操作类似，同样封装了`RESTClient`，同样提供了`Create、Update、Delete、Get、List、Watch、Patch`等方法。
+`RESTClient`是最基础的客户端。其他的`ClientSet`、`DynamicClient`及`DiscoveryClient`都是基于`RESTClient`实现的。`RESTClient`对`HTTP Request`进行了封装，实现了`RESTful`风格的`API`。它具有很高的灵活性，数据不依赖于方法和资源，因此`RESTClient`能够处理多种类型的调用，返回不同的数据格式。
 
-`DynamicClient`与`ClientSet`最大的不同之处是，`ClientSet`仅能访问`Kubernetes`自带的资源（即客户端集合内的资源），不能直接访问`CRD`自定义资源。`ClientSet`需要预先实现每种`Resource`和`Version`的操作，其内部的数据都是结构化数据（即已知数据结构）。而`DynamicClient`内部实现了`Unstructured`，用于处理非结构化数据结构（即无法提前预知数据结构），这也是`DynamicClient`能够处理`CRD`自定义资源的关键。
+类似于`kubectl`命令，通过`RESTClient`列出`kube-system`运行的`Pod`资源对象，`RESTClient Example`代码示例：
 
-注意：`DynamicClient`不是类型安全的，因此在访问`CRD`自定义资源时需要特别注意。例如，在操作指针不当的情况下可能会导致程序崩溃。
-
-`DynamicClient`的处理过程将`Resource`（例如`PodList`）转换成`Unstructured`结构类型，`Kubernetes`的所有`Resource`都可以转换为该结构类型。处理完成后，再将`Unstructured`转换成`PodList`。整个过程类似于`Go`语言的`interface{}`断言转换过程。另外，`Unstructured`结构类型是通过`map[string]interface{}`转换的。
-
-类似于`kubectl`命令，通过`DynamicClient` 创建`deployment`,并使用`list`列出当前`pod`的名称和数量，`DynamicClient Example`代码示例如下：
+[https://github.com/kubecto/kubecto-client-go](https://github.com/kubecto/kubecto-client-go)
 
 ```go
+
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
-
-	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path/filepath"
 )
 
 func main() {
 	var kubeconfig *string
-// home是家目录，如果能取得家目录的值，就可以用来做默认值
+
+	// home是家目录，如果能取得家目录的值，就可以用来做默认值
+	if home:=homedir.HomeDir(); home != "" {
 		// 如果输入了kubeconfig参数，该参数的值就是kubeconfig文件的绝对路径，
 		// 如果没有输入kubeconfig参数，就用默认路径~/.kube/config
-	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
+		// 如果取不到当前用户的家目录，就没办法设置kubeconfig的默认目录了，只能从入参中取
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
-	flag.Parse()
 
-//定义函数内的变量
-        namespace := "default"
-        replicas := 2
-        deployname := "ku"
-        image := "nginx:1.17"
+	flag.Parse()
 
 	// 从本机加载kubeconfig配置文件，因此第一个参数为空字符串
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-        // kubeconfig加载失败就直接退出了
+
+	// kubeconfig加载失败就直接退出了
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
-        // dynamic.NewForConfig实例化对象
-	client, err := dynamic.NewForConfig(config)
+
+	// 参考path : /api/v1/namespaces/{namespace}/pods
+	config.APIPath = "api"
+	// pod的group是空字符串
+	config.GroupVersion = &corev1.SchemeGroupVersion
+	// 指定序列化工具
+	config.NegotiatedSerializer = scheme.Codecs
+
+	// 根据配置信息构建restClient实例
+	restClient, err := rest.RESTClientFor(config)
+
+	if err!=nil {
+		panic(err.Error())
+	}
+
+	// 保存pod结果的数据结构实例
+	result := &corev1.PodList{}
+
+	//  指定namespace
+	namespace := "kube-system"
+	// 设置请求参数，然后发起请求
+	// GET请求
+	err = restClient.Get().
+		//  指定namespace，参考path : /api/v1/namespaces/{namespace}/pods
+		Namespace(namespace).
+		// 查找多个pod，参考path : /api/v1/namespaces/{namespace}/pods
+		Resource("pods").
+		// 指定大小限制和序列化工具
+		VersionedParams(&metav1.ListOptions{Limit:100}, scheme.ParameterCodec).
+		// 请求
+		Do(context.TODO()).
+		// 结果存入result
+		Into(result)
+
 	if err != nil {
-		panic(err)
-	}
-        //使用schema的包带入gvr
-	deploymentRes := schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
-        //定义结构化数据结构
-	deployment := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "apps/v1",
-			"kind":       "Deployment",
-			"metadata": map[string]interface{}{
-				"name": deployname,
-			},
-			"spec": map[string]interface{}{
-				"replicas": replicas,
-				"selector": map[string]interface{}{
-					"matchLabels": map[string]interface{}{
-						"app": "demo",
-					},
-				},
-				"template": map[string]interface{}{
-					"metadata": map[string]interface{}{
-						"labels": map[string]interface{}{
-							"app": "demo",
-						},
-					},
-
-					"spec": map[string]interface{}{
-						"containers": []map[string]interface{}{
-							{
-								"name":  "web",
-								"image": image,
-								"ports": []map[string]interface{}{
-									{
-										"name":          "http",
-										"protocol":      "TCP",
-										"containerPort": 80,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		panic(err.Error())
 	}
 
-	// 创建 Deployment
-	fmt.Println("创建 deployment...")
-	result, err := client.Resource(deploymentRes).Namespace(namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
-	if err != nil {
-		panic(err)
-	}
+	// 打印名称
+	fmt.Printf("Namespace\t Status\t\t Name\n")
 
-	fmt.Printf("创建 deployment %q.\n", result.GetName())
-
-	// 列出 Deployments
-	prompt()
-	fmt.Printf("在命名空间中列出deployment %q:\n", apiv1.NamespaceDefault)
-	list, err := client.Resource(deploymentRes).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		panic(err)
+	// 每个pod都打印Namespace、Status.Phase、Name三个字段
+	for _, d := range result.Items {
+		fmt.Printf("%v\t %v\t %v\n",
+			d.Namespace,
+			d.Status.Phase,
+			d.Name)
 	}
-	for _, d := range list.Items {
-		replicas, found, err := unstructured.NestedInt64(d.Object, "spec", "replicas")
-		if err != nil || !found {
-			fmt.Printf("Replicas not found for deployment %s: error=%s", d.GetName(), err)
-			continue
-		}
-		fmt.Printf(" * %s (%d replicas)\n", d.GetName(), replicas)
-	}
-
-}
-func prompt() {
-	fmt.Printf("--------------> 按回车键继续 <--------------.")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		break
-	}
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
-	fmt.Println()
 }
 ```
 
-首先加载`kubeconfig`配置信息，`dynamic.NewForConfig`通过`kubeconfig`配置信息实例化`dynamicClient`对象，该对象用于管理`Kubernetes`的所有`Resource`的客户端，例如对`Resource`执行`Create、Update、Delete、Get、List、Watch、Patch`等操作。
+运行以上代码，列出`kube-system`命名空间下的所有`Pod`资源对象的相关信息。首先加载`kubeconfig`配置信息，并设置`config.APIPath`请求的`HTTP`路径。然后设置`config.GroupVersion`请求的资源组/资源版本。最后设置`config.NegotiatedSerializer`数据的编解码器。
+
+`rest.RESTClientFor`函数通过`kubeconfig`配置信息实例化`RESTClient`对象，`RESTClient`对象构建`HTTP`请求参数，例如`Get`函数设置请求方法为`get`操作，它还支持`Post、Put、Delete、Patch`等请求方法。`Namespace`函数设置请求的命名空间。`Resource`函数设置请求的资源名称。`VersionedParams`函数将一些查询选项（如`limit、TimeoutSeconds`等）添加到请求参数中。通过`Do`函数执行该请求，并将`kube-apiserver`返回的结果（`Result`对象）解析到`corev1.PodList`对象中。最终格式化输出结果。
+
+`RESTClient`发送请求的过程对`Go`语言标准库`net/http`进行了封装，由`Do→request`函数实现，代码示例如下：
+代码路径：`vendor/k8s.io/client-go/rest/request.go`
+
+```go
+func (r *Request) Do(ctx context.Context) Result {
+	var result Result
+	err := r.request(ctx, func(req *http.Request, resp *http.Response) {
+		result = r.transformResponse(resp, req)
+	})
+	if err != nil {
+		return Result{err: err}
+	}
+	return result
+}
+```
+
+```go
+for {
+
+		url := r.URL().String()
+		req, err := http.NewRequest(r.verb, url, r.body)
+		if err != nil {
+			return err
+		}
+		req = req.WithContext(ctx)
+		req.Header = r.headers
+
+		r.backoff.Sleep(r.backoff.CalculateBackoff(r.URL()))
+		if retries > 0 {
+			// We are retrying the request that we already send to apiserver
+			// at least once before.
+			// This request should also be throttled with the client-internal rate limiter.
+			if err := r.tryThrottleWithInfo(ctx, retryInfo); err != nil {
+				return err
+			}
+			retryInfo = ""
+		}
+		resp, err := client.Do(req)
+		updateURLMetrics(ctx, r, resp, err)
+		if err != nil {
+			r.backoff.UpdateBackoff(r.URL(), err, 0)
+		} else {
+			r.backoff.UpdateBackoff(r.URL(), err, resp.StatusCode)
+		}
+		if err != nil {
+			// "Connection reset by peer" or "apiserver is shutting down" are usually a transient errors.
+			// Thus in case of "GET" operations, we simply retry it.
+			// We are not automatically retrying "write" operations, as
+			// they are not idempotent.
+			if r.verb != "GET" {
+				return err
+			}
+			// For connection errors and apiserver shutdown errors retry.
+			if net.IsConnectionReset(err) || net.IsProbableEOF(err) {
+				// For the purpose of retry, we set the artificial "retry-after" response.
+				// TODO: Should we clean the original response if it exists?
+				resp = &http.Response{
+					StatusCode: http.StatusInternalServerError,
+					Header:     http.Header{"Retry-After": []string{"1"}},
+					Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+				}
+			} else {
+				return err
+			}
+		}
+
+		done := func() bool {
+			// Ensure the response body is fully read and closed
+			// before we reconnect, so that we reuse the same TCP
+			// connection.
+			defer func() {
+				const maxBodySlurpSize = 2 << 10
+				if resp.ContentLength <= maxBodySlurpSize {
+					io.Copy(ioutil.Discard, &io.LimitedReader{R: resp.Body, N: maxBodySlurpSize})
+				}
+				resp.Body.Close()
+			}()
+
+			retries++
+			if seconds, wait := checkWait(resp); wait && retries <= r.maxRetries {
+				retryInfo = getRetryReason(retries, seconds, resp, err)
+				if seeker, ok := r.body.(io.Seeker); ok && r.body != nil {
+					_, err := seeker.Seek(0, 0)
+					if err != nil {
+						klog.V(4).Infof("Could not retry request, can't Seek() back to beginning of body for %T", r.body)
+						fn(req, resp)
+						return true
+					}
+				}
+
+				klog.V(4).Infof("Got a Retry-After %ds response for attempt %d to %v", seconds, retries, url)
+				r.backoff.Sleep(time.Duration(seconds) * time.Second)
+				return false
+			}
+			fn(req, resp)
+			return true
+		}()
+```
+
+请求发送之前需要根据请求参数生成请求的`RESTful URL`，由`r.URL.String`函数完成。例如，在`RESTClient Example`代码示例中，根据请求参数生成请求的`RESTful URL`为`http://127.0.0.1:8080/api/v1/namespaces/kube-system/pods？limit=500`，其中`api`参数为`v1`，`namespace`参数为`system`，请求的资源为`pods`，`limit`参数表示最多检索出`500`条信息。
+
+最后通过`Go`语言标准库`net/http`向`RESTful URL`（即`kube-apiserver`）发送请求，请求得到的结果存放在`http.Response`的`Body`对象中，`fn`函数（即`transformResponse`）将结果转换为资源对象。当函数退出时，会通过`resp.Body.Close`命令进行关闭，防止内存溢出。
