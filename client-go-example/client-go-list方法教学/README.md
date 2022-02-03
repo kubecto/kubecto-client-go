@@ -1,9 +1,12 @@
 1、由于使用不同的k8s集群与之对应的client-go版本也不一致，拿到代码首先go mod init app，进行初始化项目
+
 2、go mod tidy，解决项目依赖
+
 3、运行代码
 ```
 go run main.go
 ```
+
 4、执行结果如下
 ```
 [root@kubecto listpod]# go run node.go
