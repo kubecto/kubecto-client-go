@@ -21,10 +21,11 @@ kubecto
 ```
 
 此代码使用开发技巧，首先开发list功能需要注意的点
-1、https://github.com/kubernetes/kubernetes/blob/master/pkg/registry/
+
+1)、https://github.com/kubernetes/kubernetes/blob/master/pkg/registry/
 通过这里找到对应的 kubernetes Group以及 kubernetes Kind/resources简称GR/GK
 
-2、https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/api/apps/
+2)、https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/api/apps/
 比如开发apps资源类型下的pod,先找到register.go，找到对应的list接口
 ```
 func addKnownTypes(scheme *runtime.Scheme) error {
@@ -41,7 +42,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ControllerRevisionList{},
 ```
     
-3、再去看type.go里面找到DeploymentList的结构体
+3)、再去看type.go里面找到DeploymentList的结构体
 ```
 // DeploymentList is a list of Deployments.
 type DeploymentList struct {
@@ -54,9 +55,9 @@ type DeploymentList struct {
 	Items []Deployment `json:"items" protobuf:"bytes,2,rep,name=items"`
 ```
 
-4、取方法clientset.AppsV1().Deployments("default").List(ctx, metav1.ListOptions{})
+4)、取方法clientset.AppsV1().Deployments("default").List(ctx, metav1.ListOptions{})
 
-5、最后使用遍历，取值，其他方法大同小异
+5)、最后使用遍历，取值，其他方法大同小异
 ```
 for _,d deploy range {
             fmt.Printf("%s\n", d.Name)
