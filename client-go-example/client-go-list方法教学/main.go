@@ -86,4 +86,15 @@ func main() {
         for _, no := range node.Items {
                 fmt.Printf("%s\n", no.Name)
         }
+
+        fmt.Println("获取kube-system svc")
+        //5、获取kube-system下的service
+        svc, err := clientset.CoreV1().Services("kube-system").List(ctx, metav1.ListOptions{})
+        if err != nil {
+                fmt.Printf("listing service %s\n", err.Error())
+        }
+        for _, service := range svc.Items {
+                fmt.Printf("%s\n", service.Name)
+        }
+
 }
