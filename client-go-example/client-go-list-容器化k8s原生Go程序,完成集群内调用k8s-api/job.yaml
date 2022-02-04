@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: list
+spec:
+  template:
+    metadata:
+    spec:
+      containers:
+      - image: list
+        imagePullPolicy: IfNotPresent
+        name: list
+      restartPolicy: Never

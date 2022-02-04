@@ -13,6 +13,10 @@ import (
 
 func main() {
 	// 创建 in-cluster config
+        //这里的rest.InClusterConfig实际会调用client-go的服务账户信息,每创建pod的时候都会使用此认证
+        //https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/client-go/rest/config.go#L512
+        //	tokenFile  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	//	rootCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
