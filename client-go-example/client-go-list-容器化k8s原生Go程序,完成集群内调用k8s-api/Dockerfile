@@ -1,3 +1,3 @@
 FROM centos
-COPY ./list /list
-ENTRYPOINT ["./list"] 
+COPY ./listing /listing
+ENTRYPOINT ["./listing"] 

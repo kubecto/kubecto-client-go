@@ -1,4 +1,4 @@
-module app
+module listing
 
 go 1.17
 
