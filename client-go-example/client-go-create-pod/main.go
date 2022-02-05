@@ -36,17 +36,17 @@ func main() {
   //pod模版
   newPod := &corev1.Pod{
     ObjectMeta: metav1.ObjectMeta{
-      Name: "test-pod",
+      Name: "test-busybox",
     },
     Spec: corev1.PodSpec{
       Containers: []corev1.Container{
-        {Name: "busybox", Image: "busybox:latest", Command: []string{"sleep", "100000"}},
+        {Name: "busybox", Image: "busybox:latest", Command: []string{"sleep", "1000"}},
       },
     },
   }
 
  //创建pod
-  pod, err := clientset.CoreV1().Pods("default").Create(context.Background(), newPod, metav1.CreateOptions{})
+  pod, err := clientset.CoreV1().Pods("kube-system").Create(context.Background(), newPod, metav1.CreateOptions{})
   if err != nil {
     panic(err)
   }
