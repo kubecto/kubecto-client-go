@@ -75,6 +75,6 @@ func handleAdd(obj interface{}) {
 }
 
 func handleDel(obj interface{}) {
-	fmt.Println("注册的删除函数已经被调用，创建deployment,则使用此接口输出")
+	fmt.Println("注册的删除函数已经被调用，删除deployment,则使用此接口输出")
 
 }
