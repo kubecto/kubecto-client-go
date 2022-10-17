@@ -38,7 +38,7 @@ go: found k8s.io/client-go/rest in k8s.io/client-go v0.23.3
 编译此项目
 
 ```go
-[root@kubecto client-go]# go build -o ./app .
+[root@kubecto client-go]# GOOS=linux GOARCH=amd64 go build -o ./app .
 [root@kubecto client-go]# ls
 app  Dockerfile  go.mod  go.sum  main.go  pod.yaml
 ```
